@@ -129,7 +129,11 @@ class CustomPlayer:
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
+            if self.method == 'minimax':
+                return self.minimax(game, self.search_depth)[1]
+            elif self.method == 'alphabeta':
+                return self.alphabeta(game, self.search_depth)[1]
+
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
@@ -172,8 +176,25 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        player = game.active_player
+        legal_moves = game.get_legal_moves(player=player)
+
+        # If this is a terminal move or depth limit is reached, finish the search
+        utility = game.utility(player)
+        if utility != 0 or depth == 0:
+            return self.score(game, self), game.get_player_location(player)
+        else:
+            results = []
+            for move in legal_moves:
+                next_game = game.forecast_move(move)
+                if depth == 1:
+                    results.append((self.score(next_game, self), move))
+                else:
+                    results.append((self.minimax(next_game, depth-1, not maximizing_player)[0], move))
+            if maximizing_player:
+                return max(results)
+            else:
+                return min(results)
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -216,5 +237,22 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        player = game.active_player
+        legal_moves = game.get_legal_moves(player=player)
+
+        # If this is a terminal move or depth limit is reached, finish the search
+        utility = game.utility(player)
+        if utility != 0 or depth == 0:
+            return self.score(game, self), game.get_player_location(player)
+        else:
+            results = []
+            for move in legal_moves:
+                next_game = game.forecast_move(move)
+                if depth == 1:
+                    results.append((self.score(next_game, self), move))
+                else:
+                    results.append((self.minimax(next_game, depth - 1, not maximizing_player)[0], move))
+            if maximizing_player:
+                return max(results)
+            else:
+                return min(results)
