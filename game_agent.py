@@ -129,15 +129,25 @@ class CustomPlayer:
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            if self.method == 'minimax':
-                return self.minimax(game, self.search_depth)[1]
-            elif self.method == 'alphabeta':
-                return self.alphabeta(game, self.search_depth)[1]
-
+            if self.iterative:
+                result = None
+                depth = 0
+                while True: # Just until time runs out
+                    depth += 1
+                    if self.method == 'minimax':
+                        result = self.minimax(game, depth)[1]
+                    elif self.method == 'alphabeta':
+                        result = self.alphabeta(game, depth)[1]
+            else:
+                if self.method == 'minimax':
+                    return self.minimax(game, self.search_depth)[1]
+                elif self.method == 'alphabeta':
+                    return self.alphabeta(game, self.search_depth)[1]
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
-            pass
+            if self.iterative:
+                return result
 
         # Return the best move from the last completed search iteration
         raise NotImplementedError
@@ -182,15 +192,12 @@ class CustomPlayer:
         # If this is a terminal move or depth limit is reached, finish the search
         utility = game.utility(player)
         if utility != 0 or depth == 0:
-            return self.score(game, self), game.get_player_location(player)
+            return self.score(game, self), game.get_player_location(self)
         else:
             results = []
             for move in legal_moves:
                 next_game = game.forecast_move(move)
-                if depth == 1:
-                    results.append((self.score(next_game, self), move))
-                else:
-                    results.append((self.minimax(next_game, depth-1, not maximizing_player)[0], move))
+                results.append((self.minimax(next_game, depth-1, not maximizing_player)[0], move))
             if maximizing_player:
                 return max(results)
             else:
@@ -243,15 +250,25 @@ class CustomPlayer:
         # If this is a terminal move or depth limit is reached, finish the search
         utility = game.utility(player)
         if utility != 0 or depth == 0:
-            return self.score(game, self), game.get_player_location(player)
+            return self.score(game, self), game.get_player_location(self)
         else:
             results = []
             for move in legal_moves:
                 next_game = game.forecast_move(move)
-                if depth == 1:
-                    results.append((self.score(next_game, self), move))
+                result = (self.alphabeta(next_game, depth-1, alpha, beta, not maximizing_player)[0], move)
+                results.append(result)
+                if maximizing_player:
+                    if result[0] >= beta:
+                        # If our result is better than an already existing option for the minimizer above,
+                        # the minimizer above will never let this option to be explored. We can prune.
+                        return result
+                    alpha = max(result[0], alpha)   # If we found the best option for the maximizer, store it.
                 else:
-                    results.append((self.minimax(next_game, depth - 1, not maximizing_player)[0], move))
+                    if result[0] <= alpha:
+                        # If our result is better than an already existing option for the maximizer above,
+                        # the maximizer above will never let this option to be explored. We can prune.
+                        return result
+                    beta = min(result[0], alpha)    # If we found the best option for the minimizer, store it.
             if maximizing_player:
                 return max(results)
             else:
